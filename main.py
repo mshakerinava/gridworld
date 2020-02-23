@@ -11,7 +11,10 @@ from os.path import join as pjoin
 from gridworld.agent import Agent
 from gridworld.gridworld import Gridworld
 from gridworld.utils.hash import hash_args
+from gridworld.utils.dict import add_dicts
 from gridworld.utils.logging import log, log_tabular
+from gridworld.utils.prefix_arg import parse_known_args_with_prefix
+
 
 argv = sys.argv[1:]
 parser = argparse.ArgumentParser()
@@ -28,19 +31,21 @@ random.seed(args.seed, version=2)
 np.random.seed(random.randint(0, 2**32 - 1))
 
 # create gridworld
-env = Gridworld(env_id=args.env)
-num_actions = env.D * 2
+env_kwargs = parse_known_args_with_prefix(argv, Gridworld.add_args)
+env = Gridworld(env_id=args.env, **env_kwargs)
+num_actions = env.num_actions
 
 # create agent
 agent = Agent(args.algo, num_actions, args.discount_factor, argv)
 
 # calculate hash of all arguments
-all_args = dict(list(vars(args).items()) + list(agent.parsed_kwargs.items()))
+all_args = add_dicts(vars(args), agent.parsed_kwargs, env_kwargs)
 print('parsed args = %s' % json.dumps(all_args, sort_keys=True, indent=4), file=sys.stderr)
 args_hash = hash_args(all_args)
 
 # create output folder for experiment
 save_path = 'experiments/%s__%s__#%s/seed-%02d/' % (args.env, args.algo, args_hash, args.seed)
+print('save path = %s' % save_path)
 os.makedirs(save_path, exist_ok=False)
 
 # open log files
@@ -85,14 +90,12 @@ agent.save(path=save_path + 'agent-final.pkl')
 
 #-- log learned policy --#
 file_policy_txt = open(pjoin(save_path, 'policy.txt'), 'w')
-actions = ['D', 'U', 'R', 'L']
 for row in range(env.spec.size()[0]):
     for col in range(env.spec.size()[1]):
         env.pos = np.array([row, col])
         s = env.get_state()
         a_star = agent.best_action(s)
-        a_char = actions[a_star]
-        log(a_char, file=file_policy_txt, end='')
+        log('%02d' % a_star, file=file_policy_txt, end=' ')
     log('', file=file_policy_txt)
 #------------------------#
 

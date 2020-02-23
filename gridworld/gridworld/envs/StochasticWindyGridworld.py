@@ -4,7 +4,7 @@ def size():
     '''
     Returns a `numpy.ndarray` representing the size of the gridworld.
     '''
-    return np.array([4, 12])
+    return np.array([7, 10])
 
 def start():
     '''
@@ -16,13 +16,18 @@ def terminal(pos):
     '''
     Checks if position `pos` is a terminal state.
     '''
-    return (pos == [3, 11]).all()
+    return (pos == [3, 7]).all()
 
 def wind(pos):
     '''
     Returns the wind displacement affecting position `pos`.
     '''
-    return np.zeros_like(size())
+    force = [0, 0, 0, 1, 1, 1, 2, 2, 1, 0]
+    wind_delta = np.zeros_like(size())
+    wind_delta[0] = -force[pos[1]]
+    if wind_delta[0] != 0:
+        wind_delta[0] += np.random.choice([-1, 0, +1])
+    return wind_delta
 
 def wall(pos):
     '''
@@ -34,16 +39,12 @@ def reward(old_pos, action, new_pos):
     '''
     Returns reward for transition (`pos`, `action`, `new_pos`).
     '''
-    if old_pos[0] == 2 and 1 <= old_pos[1] <= 10 and action == 0:
-        return -100
     return -1
 
 def teleport(pos):
     '''
     Returns teleportation target for position `pos`.
     '''
-    if pos[0] == 3 and 1 <= pos[1] <= 10:
-        return start()
     return pos.copy()
 
 def stochastic(pos):

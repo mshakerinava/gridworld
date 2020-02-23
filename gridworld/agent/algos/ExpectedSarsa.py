@@ -61,7 +61,8 @@ class Algo:
 
     def best_action(self, state):
         self._check_q(state)
-        return np.argmax(self.q[state])
+        qs = self.q[state]
+        return np.random.choice(np.flatnonzero(np.isclose(qs, qs.max()))) # random tie breaking
 
     def learn(self, state, action, reward, state_, terminal):
         self._check_q(state)

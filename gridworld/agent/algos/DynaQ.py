@@ -6,16 +6,19 @@ import numpy as np
 class Algo:
     @staticmethod
     def add_args(arg_parser, prefix=''):
-        help_seq = 'a sequence, e.g., `Harmonic+Local` or `Const+Global`'
+        help_seq_loc = 'a sequence+locality, e.g., `Harmonic+Local` or `Const+Global`'
         arg_parser.add_argument('--%seps' % prefix, type=str, required=True,
-            help='Probability of taking a random action (%s)' % help_seq)
+            help='Probability of taking a random action (%s)' % help_seq_loc)
         arg_parser.add_argument('--%sinit-q' % prefix, type=float, required=True,
             help='Initial value for q-value estimates')
         arg_parser.add_argument('--%slearning-rate' % prefix, type=str, required=True,
-            help='The learning rate (%s)' % help_seq)
+            help='The learning rate (%s)' % help_seq_loc)
+        arg_parser.add_argument('--%sn-plan' % prefix, type=str, required=True,
+            help='Number of planning steps that are performed per real step (a sequence)')
 
-    def __init__(self, num_actions, discount_factor, argv, prefix, eps, init_q, learning_rate):
+    def __init__(self, num_actions, discount_factor, argv, prefix, eps, init_q, learning_rate, n_plan):
         self.q = {}
+        self.model = {}
         self.num_actions = num_actions
         self.discount_factor = discount_factor
         self.init_q = init_q
@@ -28,11 +31,21 @@ class Algo:
         assert self.learning_rate_locality in ['Local', 'Global']
         self.learning_rate = Sequence(self.learning_rate_seq_id, argv, prefix + 'learning-rate-')
 
-        self.parsed_kwargs = {'eps_': self.eps.parsed_kwargs, 'learning_rate_': self.learning_rate.parsed_kwargs}
+        self.n_plan = Sequence(n_plan, argv, prefix + 'n-plan-')
+
+        self.parsed_kwargs = {
+            'eps_': self.eps.parsed_kwargs,
+            'learning_rate_': self.learning_rate.parsed_kwargs,
+            'n_plan_': self.n_plan.parsed_kwargs
+        }
 
     def _check_q(self, state):
         if state not in self.q:
             self.q[state] = np.ones(self.num_actions) * self.init_q
+
+    def _check_model(self, state):
+        if state not in self.model:
+            self.model[state] = {}
 
     def _count_s(self, state):
         count = 0
@@ -64,9 +77,23 @@ class Algo:
         qs = self.q[state]
         return np.random.choice(np.flatnonzero(np.isclose(qs, qs.max()))) # random tie breaking
 
+    def _learn_one(self, state, action, reward, state_, terminal, learning_rate):
+        err = reward + self.discount_factor * (0 if terminal else np.max(self.q[state_])) - self.q[state][action]
+        self.q[state][action] += learning_rate * err
+
     def learn(self, state, action, reward, state_, terminal):
         self._check_q(state)
         self._check_q(state_)
-        err = reward + self.discount_factor * (0 if terminal else np.max(self.q[state_])) - self.q[state][action]
         learning_rate = self._get_learning_rate(state, action)
-        self.q[state][action] += learning_rate * err
+        self._learn_one(state, action, reward, state_, terminal, learning_rate)
+        # planning
+        self._check_model(state)
+        self.model[state][action] = (reward, state_, terminal)
+        n_plan = int(self.n_plan(self.count_learn))
+        observed_states = list(self.model.keys())
+        for i in range(n_plan):
+            state = np.random.choice(observed_states)
+            observed_actions = list(self.model[state].keys())
+            action = np.random.choice(observed_actions)
+            reward, state_, terminal = self.model[state][action]
+            self._learn_one(state, action, reward, state_, terminal, learning_rate)

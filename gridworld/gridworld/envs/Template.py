@@ -51,3 +51,12 @@ def stochastic(pos):
     UP, or DOWN (but not RIGHT, which is the opposite). 
     '''
     return False
+
+def irregular(pos, action):
+    '''
+    Returns `True` only if taking action `action` at position `pos`
+    does not follow the standard transition dynamics of a gridworld.
+    The position resulting from the action will be returned as the
+    second element. In other cases, `False, None` is returned.
+    '''
+    return False, None

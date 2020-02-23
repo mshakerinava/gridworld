@@ -1,22 +1,34 @@
 import numpy as np
 
+_MAP = [
+    'OOOOOOOXT',
+    'OOXOOOOXO',
+    'SOXOOOOXO',
+    'OOXOOOOOO',
+    'OOOOOXOOO',
+    'OOOOOOOOO'
+]
+
 def size():
     '''
     Returns a `numpy.ndarray` representing the size of the gridworld.
     '''
-    return np.array([4, 12])
+    num_rows = len(_MAP)
+    num_cols = len(_MAP[0])
+    return np.array([num_rows, num_cols])
 
 def start():
     '''
     Returns a `numpy.ndarray` representing a starting position.
     '''
-    return np.array([3, 0])
+    return np.array([2, 0])
 
 def terminal(pos):
     '''
     Checks if position `pos` is a terminal state.
     '''
-    return (pos == [3, 11]).all()
+    tok = _MAP[pos[0]][pos[1]]
+    return tok == 'T'
 
 def wind(pos):
     '''
@@ -28,22 +40,20 @@ def wall(pos):
     '''
     Checks if position `pos` is blocked.
     '''
-    return False
+    tok = _MAP[pos[0]][pos[1]]
+    return tok == 'X'
 
 def reward(old_pos, action, new_pos):
     '''
     Returns reward for transition (`pos`, `action`, `new_pos`).
     '''
-    if old_pos[0] == 2 and 1 <= old_pos[1] <= 10 and action == 0:
-        return -100
-    return -1
+    tok = _MAP[new_pos[0]][new_pos[1]]
+    return 1 if tok == 'T' else 0
 
 def teleport(pos):
     '''
     Returns teleportation target for position `pos`.
     '''
-    if pos[0] == 3 and 1 <= pos[1] <= 10:
-        return start()
     return pos.copy()
 
 def stochastic(pos):

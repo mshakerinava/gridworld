@@ -1,6 +1,8 @@
 import sys
 import pickle
 import importlib
+
+from gridworld.utils.dict import add_dicts
 from gridworld.utils.prefix_arg import parse_known_args_with_prefix
 
 
@@ -20,7 +22,7 @@ class Agent:
 
         self.parsed_kwargs = parse_known_args_with_prefix(argv, self.Algo.add_args, prefix)
         self.algo = self.Algo(num_actions, discount_factor, argv, prefix, **self.parsed_kwargs)
-        self.parsed_kwargs = dict(list(self.parsed_kwargs.items()) + list(self.algo.parsed_kwargs.items()))
+        self.parsed_kwargs = add_dicts(self.parsed_kwargs, self.algo.parsed_kwargs)
 
         # store counts inside `algo`
         self.algo.count_act = 0

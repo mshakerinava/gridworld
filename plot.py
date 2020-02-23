@@ -17,7 +17,7 @@ parser.add_argument('--exp-paths', type=str, nargs='*')
 parser.add_argument('--metric', type=str, default='Total Reward')
 parser.add_argument('--y-min', type=float)
 parser.add_argument('--y-max', type=float)
-parser.add_argument('--smoothing', type=float, default=0.001)
+parser.add_argument('--smoothing', type=float, default=0)
 parser.add_argument('--only-mean', action='store_true')
 args = parser.parse_args()
 args_json = json.dumps(vars(args), sort_keys=True, indent=4)
@@ -66,22 +66,28 @@ args.exp_paths[0] = os.path.normpath(args.exp_paths[0])
 env_id = args.exp_paths[0].split(os.sep)[1].split('__')[0]
 
 save_path = pjoin('plots', '%s__#%s' % (env_id, args_hash))
+print('save path = %s' % save_path)
 os.makedirs(save_path, exist_ok=False)
 
 plt.title(env_id, **fonts)
 for exp_path in args.exp_paths:
     exp_path = os.path.normpath(exp_path)
     # it doesn't make much sense to compare in different envs
-    assert env_id == exp_path.split(os.sep)[1].split('__')[0]
+    assert env_id == exp_path.split(os.sep)[1].split('__')[0] # TODO: support multi-env plots
     d = parse_all_seed(exp_path)
-    y_mid = gaussian_filter1d(d['logs mean'][args.metric], sigma=args.smoothing)
+    y_mid = d['logs mean'][args.metric]
+    if args.smoothing > 0:
+        y_mid = gaussian_filter1d(y_mid, sigma=args.smoothing)
     x = np.arange(y_mid.shape[0])
     label = exp_path.split('__', 1)[1].replace('__', '')
     plt.plot(x, y_mid, label=label)
     if not args.only_mean:
         y_std = d['logs std'][args.metric]
-        y_top = gaussian_filter1d(y_mid + y_std, sigma=args.smoothing)
-        y_bot = gaussian_filter1d(y_mid - y_std, sigma=args.smoothing)
+        y_top = y_mid + y_std
+        y_bot = y_mid - y_std
+        if args.smoothing > 0:
+            y_top = gaussian_filter1d(y_top, sigma=args.smoothing)
+            y_bot = gaussian_filter1d(y_bot, sigma=args.smoothing)
         plt.fill_between(x, y_bot, y_top, alpha=0.25)
 
 plt.xlabel('Episode', **fonts)
